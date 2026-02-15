@@ -75,4 +75,4 @@ python bot.py
 - `SETUP_GUIDE.md`: Detailed setup instructions.
 
 ---
-*Created by Receipt Bot Assistant*
+*Created by Ammar Khalid*
