@@ -5,7 +5,7 @@ A Telegram Bot that uses AI (Llama 3.2 Vision via Groq) to extract data from rec
 ## Key Features
 
 ### 1. 📷 Smart Receipt Scanning
-- **AI-Powered:** Uses `llama-3.2-90b-vision-preview` via Groq API.
+- **AI-Powered:** Uses `meta-llama/llama-4-scout-17b-16e-instruct` via Groq API.
 - **Data Extraction:** Extracts *Date*, *Vendor*, *Total*, *Currency*, and *Items*.
 - **Robust:** Handles different date formats (YYYY-MM-DD, DD.MM.YYYY) and currency symbols (e.g., €, $).
 

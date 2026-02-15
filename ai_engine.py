@@ -48,7 +48,7 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
     """
 
     payload = {
-        "model": "meta-llama/llama-4-scout-17b-16e-instruct",  # Updated to 90B model
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
         "messages": [
             {
                 "role": "user",
