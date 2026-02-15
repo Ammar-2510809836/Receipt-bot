@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+
+# Environment Variables (contains API Keys)
+.env
+
+# Google Service Account Credentials
+service account.json
+service_account.json
+*.json
+
+# OAuth Credentials
+credentials.json
+client_secret_*.json
+token.json
+token.pickle
+
+# Temporary Files
+temp_*
+*.log
