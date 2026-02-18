@@ -8,6 +8,7 @@ A Telegram Bot that uses AI (Llama 3.2 Vision via Groq) to extract data from rec
 - **AI-Powered:** Uses `meta-llama/llama-4-scout-17b-16e-instruct` via Groq API.
 - **Data Extraction:** Extracts *Date*, *Vendor*, *Total*, *Currency*, and *Items*.
 - **Robust:** Handles different date formats (YYYY-MM-DD, DD.MM.YYYY) and currency symbols (e.g., €, $).
+- **Bank Mode:** Supports Sparkasse/Banking App screenshots (maps Receiver → Vendor).
 
 ### 2. 📂 Organized Storage (Google Drive)
 - **Automatic Folders:** Creates a folder structure `Year > Month` (e.g., `2026/02`).

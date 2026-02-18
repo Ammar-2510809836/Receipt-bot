@@ -25,7 +25,7 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
     # UPDATED PROMPT: Specific OCR instructions + German/English support + Strict JSON
     prompt_text = """
     You are an OCR extraction engine.
-    Extract EXACT values from the receipt image.
+    Extract EXACT values from the receipt image OR bank transaction screenshot.
 
     Rules:
     - Do not guess missing numbers.
@@ -35,6 +35,11 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
     - Convert decimal comma to dot.
     - Currency must be ISO format (EUR, USD).
     - Output STRICT JSON only. No markdown.
+    
+    Specific for Bank Screenshots (e.g. Sparkasse):
+    - Map "Receiver" or "Empfänger" to 'vendor'.
+    - Map "Amount" or "Betrag" to 'total'.
+    - Map "Date" or "Buchungstag" to 'date'.
 
     Keys:
     date (YYYY-MM-DD)
