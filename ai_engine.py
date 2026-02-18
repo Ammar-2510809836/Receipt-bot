@@ -4,6 +4,7 @@ import json
 import base64
 from typing import Dict, Any
 
+import logging
 from config import GROQ_API_KEY
 
 def encode_image(image_path: str) -> str:
