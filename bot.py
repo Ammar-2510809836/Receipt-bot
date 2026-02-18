@@ -35,53 +35,55 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         # 1. AI Analysis
-        data = extract_receipt_data(temp_path)
-        if not data:
-            await context.bot.send_message(chat_id=chat_id, text="Could not extract data from this receipt.")
+        extracted_items = extract_receipt_data(temp_path)
+        if not extracted_items:
+            await context.bot.send_message(chat_id=chat_id, text="Could not extract data from this receipt/screenshot.")
             os.remove(temp_path)
             return
 
-        date_str = data.get('date')
-        if not date_str:
-            # Fallback to current date if missing
-            date_str = datetime.now().strftime("%Y-%m-%d")
-        
-        # Parse date components for logic
-        try:
-            receipt_date = datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            # Fallback for weird formatting
-            receipt_date = datetime.now()
-            date_str = receipt_date.strftime("%Y-%m-%d")
+        # 2. Upload to Drive (Once per file)
+        # We use the date of the FIRST item to determine the folder, or today's date
+        first_date = extracted_items[0].get('date') or datetime.now().strftime("%Y-%m-%d")
+        drive_link = upload_receipt_image(temp_path, first_date)
 
-        year = receipt_date.year
-        month = receipt_date.month
-        month_name = receipt_date.strftime("%B")
+        if not drive_link:
+             await context.bot.send_message(chat_id=chat_id, text="Error saving image to Google Drive.")
+             return
 
-        total = data.get('total')
-        vendor = data.get('vendor')
-        
-        # 2. Upload to Drive (uses YYYY/MM folder)
-        drive_link = upload_receipt_image(temp_path, date_str)
-        
-        # 3. Add to Sheet
-        if drive_link:
+        # 3. Process each transaction
+        for data in extracted_items:
+            date_str = data.get('date')
+            if not date_str:
+                date_str = datetime.now().strftime("%Y-%m-%d")
+            
+            try:
+                receipt_date = datetime.strptime(date_str, "%Y-%m-%d")
+            except ValueError:
+                receipt_date = datetime.now()
+                date_str = receipt_date.strftime("%Y-%m-%d")
+
+            year = receipt_date.year
+            month = receipt_date.month
+            month_name = receipt_date.strftime("%B")
+
+            total = data.get('total')
+            vendor = data.get('vendor')
+            
+            # Add to Sheet
             add_transaction_to_sheet(data, drive_link)
             
-            # 4. Reply with summary for THAT month
+            # Reply with summary
             month_total = get_monthly_spend(year, month)
             
             reply_text = (
-                f"🧾 *Receipt Saved!*\n"
+                f"🧾 *Transaction Saved!*\n"
                 f"📅 Date: {date_str}\n"
                 f"🏪 Vendor: {vendor}\n"
-                f"💰 Total: {data.get('currency', '$')}{total}\n"
-                f"📂 Saved to Drive ({year}/{month:02d})\n\n"
+                f"💰 Total: {data.get('currency', '€')}{total}\n"
+                f"📂 Image: [View in Drive]({drive_link})\n"
                 f"📊 *Total for {month_name} {year}:* €{month_total:.2f}"
             )
             await context.bot.send_message(chat_id=chat_id, text=reply_text, parse_mode='Markdown')
-        else:
-            await context.bot.send_message(chat_id=chat_id, text="Error saving to Google Drive.")
 
     except Exception as e:
         logging.error(f"Error handling photo: {e}")

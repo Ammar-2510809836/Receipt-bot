@@ -2,7 +2,7 @@ import time
 import requests
 import json
 import base64
-from typing import Dict, Any
+from typing import List, Dict, Any
 
 import logging
 from config import GROQ_API_KEY
@@ -11,10 +11,10 @@ def encode_image(image_path: str) -> str:
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
-def extract_receipt_data(image_path: str) -> Dict[str, Any]:
+def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
     """
-    Sends an image path to Groq Vision API (Llama 3.2 90B) to extract structured receipt data.
-    Includes validation and robust error handling.
+    Sends an image path to Groq Vision API to extract structured receipt data.
+    Returns a LIST of dictionaries (to handle multiple transactions in one screenshot).
     """
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -23,10 +23,13 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
     
     encoded_image = encode_image(image_path)
 
+
     # UPDATED PROMPT: Specific OCR instructions + German/English support + Strict JSON
     prompt_text = """
     You are an OCR extraction engine.
     Extract EXACT values from the receipt image OR bank transaction screenshot.
+    
+    If there are multiple transactions, output a JSON ARRAY of objects.
 
     Rules:
     - Do not guess missing numbers.
@@ -89,33 +92,48 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
             content = data['choices'][0]['message']['content']
             
             # Robust JSON extraction using Regex
-            # The model might return ```json or just ``` or extra text.
             import re
-            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            # Try to find list first, then object
+            json_match = re.search(r'\[.*\]', content, re.DOTALL) or re.search(r'\{.*\}', content, re.DOTALL)
             
+            parsed_data = []
+
             if json_match:
-                parsed_data = json.loads(json_match.group(0))
+                raw_json = json.loads(json_match.group(0))
             else:
                 # Fallback if no JSON structure found, try raw parse
-                parsed_data = json.loads(content)
-    
-            # VALIDATION STEP
-            if parsed_data.get("total") is not None:
-                if isinstance(parsed_data["total"], (int, float)):
-                     if parsed_data["total"] < 0:
-                        logging.warning("Validation Error: Total is negative.")
-                else:
-                    logging.warning("Validation Error: Total is not a number.")
+                raw_json = json.loads(content)
             
-            # Simple date validation (optional, can be improved)
-            if parsed_data.get("date"):
-                try:
-                    # Check if strictly YYYY-MM-DD
-                    time.strptime(parsed_data["date"], "%Y-%m-%d")
-                except ValueError:
-                    logging.warning(f"Validation Warning: Invalid date format {parsed_data['date']}")
-    
-            return parsed_data
+            # Normalize to list
+            if isinstance(raw_json, list):
+                parsed_data = raw_json
+            elif isinstance(raw_json, dict):
+                parsed_data = [raw_json]
+            else:
+                logging.error("JSON is neither dict nor list")
+                continue
+
+            # VALIDATION STEP (Iterate through items)
+            valid_items = []
+            for item in parsed_data:
+                # Basic Total Validation
+                if item.get("total") is not None:
+                    if isinstance(item["total"], (int, float)):
+                        pass 
+                    else:
+                        logging.warning(f"Validation Error: Total is not a number in item {item}")
+                        continue # Skip invalid item
+
+                # Date Validation
+                if item.get("date"):
+                    try:
+                        time.strptime(item["date"], "%Y-%m-%d")
+                    except ValueError:
+                        logging.warning(f"Validation Warning: Invalid date format {item.get('date')}")
+                
+                valid_items.append(item)
+
+            return valid_items
             
         except requests.exceptions.HTTPError as e:
             logging.error(f"HTTP Error (Attempt {attempt+1}/{max_retries}): {e}")
@@ -124,18 +142,17 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
             except:
                 pass
             
-            # If 500 error, wait and retry
             if e.response.status_code >= 500:
                 time.sleep(2)
                 continue
             else:
-                return {} # Don't retry 4xx errors (client side)
+                return [] 
                 
         except json.JSONDecodeError:
             logging.error(f"Invalid JSON returned from LLM: {content}")
-            return {}
+            return []
         except Exception as e:
             logging.error(f"Error extracting data from Groq: {e}")
-            return {}
+            return []
     
-    return {}
+    return []
