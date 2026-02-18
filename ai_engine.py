@@ -78,53 +78,63 @@ def extract_receipt_data(image_path: str) -> Dict[str, Any]:
         "stop": None
     }
 
-    try:
-        response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
-        response.raise_for_status()
-        data = response.json()
-        content = data['choices'][0]['message']['content']
-        
-        # Robust JSON extraction using Regex
-        # The model might return ```json or just ``` or extra text.
-        import re
-        json_match = re.search(r'\{.*\}', content, re.DOTALL)
-        
-        if json_match:
-            parsed_data = json.loads(json_match.group(0))
-        else:
-            # Fallback if no JSON structure found, try raw parse
-            parsed_data = json.loads(content)
-
-        # VALIDATION STEP
-        if parsed_data.get("total") is not None:
-            if isinstance(parsed_data["total"], (int, float)):
-                 if parsed_data["total"] < 0:
-                    print("Validation Error: Total is negative.")
-                    # Optional: handle or return partial data
-            else:
-                print("Validation Error: Total is not a number.")
-        
-        # Simple date validation (optional, can be improved)
-        if parsed_data.get("date"):
-            try:
-                # Check if strictly YYYY-MM-DD
-                time.strptime(parsed_data["date"], "%Y-%m-%d")
-            except ValueError:
-                print(f"Validation Warning: Invalid date format {parsed_data['date']}")
-                # Attempt to fix or set to None? For now just log.
-
-        return parsed_data
-        
-    except json.JSONDecodeError:
-        print(f"Invalid JSON returned from LLM: {content}")
-        return {}
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error: {e}")
+    # Retry Loop for Robustness
+    max_retries = 3
+    for attempt in range(max_retries):
         try:
-            print(f"Response Body: {e.response.text}")
-        except:
-            pass
-        return {}
-    except Exception as e:
-        print(f"Error extracting data from Groq: {e}")
-        return {}
+            response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload)
+            response.raise_for_status()
+            data = response.json()
+            content = data['choices'][0]['message']['content']
+            
+            # Robust JSON extraction using Regex
+            # The model might return ```json or just ``` or extra text.
+            import re
+            json_match = re.search(r'\{.*\}', content, re.DOTALL)
+            
+            if json_match:
+                parsed_data = json.loads(json_match.group(0))
+            else:
+                # Fallback if no JSON structure found, try raw parse
+                parsed_data = json.loads(content)
+    
+            # VALIDATION STEP
+            if parsed_data.get("total") is not None:
+                if isinstance(parsed_data["total"], (int, float)):
+                     if parsed_data["total"] < 0:
+                        logging.warning("Validation Error: Total is negative.")
+                else:
+                    logging.warning("Validation Error: Total is not a number.")
+            
+            # Simple date validation (optional, can be improved)
+            if parsed_data.get("date"):
+                try:
+                    # Check if strictly YYYY-MM-DD
+                    time.strptime(parsed_data["date"], "%Y-%m-%d")
+                except ValueError:
+                    logging.warning(f"Validation Warning: Invalid date format {parsed_data['date']}")
+    
+            return parsed_data
+            
+        except requests.exceptions.HTTPError as e:
+            logging.error(f"HTTP Error (Attempt {attempt+1}/{max_retries}): {e}")
+            try:
+                logging.error(f"Response Body: {e.response.text}")
+            except:
+                pass
+            
+            # If 500 error, wait and retry
+            if e.response.status_code >= 500:
+                time.sleep(2)
+                continue
+            else:
+                return {} # Don't retry 4xx errors (client side)
+                
+        except json.JSONDecodeError:
+            logging.error(f"Invalid JSON returned from LLM: {content}")
+            return {}
+        except Exception as e:
+            logging.error(f"Error extracting data from Groq: {e}")
+            return {}
+    
+    return {}

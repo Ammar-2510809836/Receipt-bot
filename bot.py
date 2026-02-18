@@ -12,7 +12,11 @@ from datetime import datetime
 # Logging setup
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler("receipt_bot.log"),
+        logging.StreamHandler()  # Keep console output for now, or remove if user wants silence
+    ]
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
