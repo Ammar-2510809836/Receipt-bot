@@ -9,6 +9,8 @@ A Telegram Bot that uses AI (Llama 3.2 Vision via Groq) to extract data from rec
 - **Data Extraction:** Extracts *Date*, *Vendor*, *Total*, *Currency*, and *Items*.
 - **Robust:** Handles different date formats (YYYY-MM-DD, DD.MM.YYYY) and currency symbols (e.g., €, $).
 - **Bank Mode:** Supports Sparkasse/Banking App screenshots (maps Receiver → Vendor).
+- **Multi-Transaction:** Detects and logs multiple transactions from a single screenshot.
+- **Smart Filtering:** Ignores non-expenses (Deposits/Income) and balance summaries ("Guthaben").
 
 ### 2. 📂 Organized Storage (Google Drive)
 - **Automatic Folders:** Creates a folder structure `Year > Month` (e.g., `2026/02`).
@@ -16,13 +18,17 @@ A Telegram Bot that uses AI (Llama 3.2 Vision via Groq) to extract data from rec
 
 ### 3. 📊 Automated Bookkeeping (Google Sheets)
 - **Multi-Sheet Support:** Automatically creates a new tab for each month (e.g., `February 2026`).
-- **Auto-Headers:** Adds headers (`Date | Vendor | Total | ...`) immediately if a new sheet is created.
+- **Auto-Headers:** Smartly detects missing headers (even in cleared sheets) and restores them.
 - **Data Logging:** Appends extracted data row-by-row.
 
 ### 4. 💬 Chat Assistant
 - **Greetings:** Responds to "Hi", "Hello".
 - **Spend Queries:** Answers questions like "Total for January" or "How much did I spend in Feb 2026?".
 - **Immediate Feedback:** Replies with a summary after every upload.
+
+### 5. 🛠️ System Reliability
+- **File Logging:** Error logs are saved to `receipt_bot.log` for easy debugging.
+- **Auto-Retry:** Automatically retries API calls if Groq servers are busy (500 errors).
 
 ---
 
