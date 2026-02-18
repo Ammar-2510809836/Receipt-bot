@@ -39,11 +39,14 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
     - Convert decimal comma to dot.
     - Currency must be ISO format (EUR, USD).
     - Output STRICT JSON only. No markdown.
+    - IGNORE lines that are balances/headers (e.g., "Guthaben", "Balance", "Kontostand", "Information").
+    - ONLY extract valid transactions with a specific nonzero amount.
     
     Specific for Bank Screenshots (e.g. Sparkasse):
     - Map "Receiver" or "Empfänger" to 'vendor'.
     - Map "Amount" or "Betrag" to 'total'.
     - Map "Date" or "Buchungstag" to 'date'.
+    - Ignore "Guthaben auf Girokonten" or similar balance summaries.
 
     Keys:
     date (YYYY-MM-DD)
@@ -116,11 +119,24 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
             # VALIDATION STEP (Iterate through items)
             valid_items = []
             for item in parsed_data:
-                # Basic Total Validation
+                # 1. Filter out Balance/Header rows by Vendor Name
+                vendor_name = str(item.get('vendor', '')).lower()
+                if any(x in vendor_name for x in ['guthaben', 'balance', 'kontostand', 'information']):
+                    logging.info(f"Skipping balance row: {vendor_name}")
+                    continue
+
+                # 2. Basic Total Validation
                 if item.get("total") is not None:
                     if isinstance(item["total"], (int, float)):
                         # Bank transactions are often negative. Convert to positive for expense tracking.
-                        item["total"] = abs(item["total"])
+                        val = abs(item["total"])
+                        
+                        # Filter out zero amounts (headers often have 0.0 or null)
+                        if val == 0:
+                            logging.info(f"Skipping zero amount item: {item}")
+                            continue
+                            
+                        item["total"] = val
                     else:
                         logging.warning(f"Validation Error: Total is not a number in item {item}")
                         continue # Skip invalid item
