@@ -47,6 +47,10 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
     - Map "Amount" or "Betrag" to 'total'.
     - Map "Date" or "Buchungstag" to 'date'.
     - Ignore "Guthaben auf Girokonten" or similar balance summaries.
+    
+    Classify 'type' as:
+    - 'expense' (if money out, negative sign, or standard receipt).
+    - 'income' (if money in, positive sign in bank statement).
 
     Keys:
     date (YYYY-MM-DD)
@@ -55,6 +59,7 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
     currency (ISO)
     category
     items (array of strings)
+    type (string: 'expense' or 'income')
 
     If a field is missing, use null.
     """
@@ -125,7 +130,13 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
                     logging.info(f"Skipping balance row: {vendor_name}")
                     continue
 
-                # 2. Basic Total Validation
+                # 2. Filter out Income/Deposits (Positive amounts in bank statement)
+                # The prompt now asks to classify 'type': 'income' or 'expense'
+                if item.get('type') == 'income':
+                    logging.info(f"Skipping income item: {item}")
+                    continue
+
+                # 3. Basic Total Validation
                 if item.get("total") is not None:
                     if isinstance(item["total"], (int, float)):
                         # Bank transactions are often negative. Convert to positive for expense tracking.
