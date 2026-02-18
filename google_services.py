@@ -145,11 +145,14 @@ def add_transaction_to_sheet(data: dict, drive_link: str):
         
         worksheet = _get_or_create_worksheet(client, GOOGLE_SHEET_ID, sheet_name)
 
-        # Ensure headers exist (in case sheet existed but was empty)
+        # Ensure headers exist (in case sheet existed but was empty/cleared)
         HEADINGS = ["Date", "Vendor", "Total", "Currency", "Category", "Items", "Drive Link", "Status"]
         existing_headers = worksheet.row_values(1)
-        if not existing_headers:
-            worksheet.append_row(HEADINGS)
+        
+        # Check if headers are missing or invalid (A1 should be "Date")
+        if not existing_headers or existing_headers[0] != "Date":
+            logger.info(f"Headers missing in {sheet_name}. Inserting at Row 1.")
+            worksheet.insert_row(HEADINGS, 1)
         
         # Data map
         vendor = data.get('vendor', 'Unknown')
