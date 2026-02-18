@@ -119,7 +119,8 @@ def extract_receipt_data(image_path: str) -> List[Dict[str, Any]]:
                 # Basic Total Validation
                 if item.get("total") is not None:
                     if isinstance(item["total"], (int, float)):
-                        pass 
+                        # Bank transactions are often negative. Convert to positive for expense tracking.
+                        item["total"] = abs(item["total"])
                     else:
                         logging.warning(f"Validation Error: Total is not a number in item {item}")
                         continue # Skip invalid item

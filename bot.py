@@ -15,8 +15,9 @@ logging.basicConfig(
     level=logging.INFO,
     handlers=[
         logging.FileHandler("receipt_bot.log"),
-        logging.StreamHandler()  # Keep console output for now, or remove if user wants silence
-    ]
+        logging.StreamHandler()
+    ],
+    force=True
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
