@@ -1,5 +1,6 @@
 import os
 import logging
+import base64
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters
 
@@ -8,6 +9,30 @@ from ai_engine import extract_receipt_data
 from google_services import upload_receipt_image, add_transaction_to_sheet, get_monthly_spend
 
 from datetime import datetime
+
+def setup_google_credentials():
+    """Decode and write Google credentials from environment variables."""
+    # Decode credentials.json
+    creds_b64 = os.getenv('GOOGLE_CREDENTIALS_B64')
+    if creds_b64:
+        try:
+            creds_data = base64.b64decode(creds_b64)
+            with open('credentials.json', 'wb') as f:
+                f.write(creds_data)
+            logging.info("✓ credentials.json restored from env var")
+        except Exception as e:
+            logging.error(f"Failed to decode credentials.json: {e}")
+    
+    # Decode token.json
+    token_b64 = os.getenv('GOOGLE_TOKEN_B64')
+    if token_b64:
+        try:
+            token_data = base64.b64decode(token_b64)
+            with open('token.json', 'wb') as f:
+                f.write(token_data)
+            logging.info("✓ token.json restored from env var")
+        except Exception as e:
+            logging.error(f"Failed to decode token.json: {e}")
 
 # Logging setup
 logging.basicConfig(
@@ -158,6 +183,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=chat_id, text="I didn't understand that. Try sending a receipt photo! 📸")
 
 if __name__ == '__main__':
+    setup_google_credentials()
     application = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
     
     start_handler = CommandHandler('start', start)
